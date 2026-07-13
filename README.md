@@ -35,7 +35,7 @@ All computation ran locally on RTX PRO 6000 (Blackwell) GPUs.
 
 ![Brain classification and atlas consistency](figures/Figure2_brain_classification_atlas_consistency.png)
 
-**Figure 2.** (a) Fine-tuned NucEL beats zero-shot ChromBPNet in all four brain cell types. (b) NucEL and ChromBPNet agree on variant-effect direction (ρ=0.50, sign concordance 0.79–0.88); **CR1/rs6701713 is the #1 hit for both models**. Brain variant effects have no experimental ground truth, so this is a model-vs-model consistency check.
+**Figure 2.** (a) Fine-tuned NucEL beats zero-shot ChromBPNet in all four brain cell types. (b) NucEL and ChromBPNet agree on variant-effect direction (ρ=0.50, overall sign concordance 64%, rising to 0.79–0.88 among high-effect variants); **CR1/rs6701713 is the #1 hit for both models**. Brain variant effects have no experimental ground truth, so this is a model-vs-model consistency check.
 
 ### 2 · Accessibility classification — a fair LM benchmark
 
