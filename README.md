@@ -147,5 +147,5 @@ python src/chrombpnet_gpu/score_gpu.py --list V.tsv --genome hg38.fa \
 
 ## Limitations
 
-- Our current result is a **NucEL vs ChromBPNet comparison under matched training data** (classification on the same GM12878 ATAC set, atlas on the same brain DNase-seq peaks); the brain effect atlas (Figure 2b) is a **model-vs-model consistency check**, not an accuracy validation against measured allelic effects.
+- Our current result is **not a same-training-condition comparison** of the DNA language model against ChromBPNet: NucEL is **task-fine-tuned** on the labeled peaks while ChromBPNet is used **zero-shot** (its pretrained count output). The brain effect atlas (Figure 2b) is therefore a **model-vs-model consistency check**, not an accuracy validation against measured allelic effects.
 - Scaling points 3×/10×/50× are single-seed; 1× is seed-sensitive (0.72–0.86). "0.941 > 0.899" is a strong trend, not a multi-seed-replicated exact margin.
