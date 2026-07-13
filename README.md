@@ -147,7 +147,5 @@ python src/chrombpnet_gpu/score_gpu.py --list V.tsv --genome hg38.fa \
 
 ## Limitations
 
-- **Brain variant effects have no experimental gold standard.** The atlas comparison (Figure 2b) shows NucEL and ChromBPNet **agree on direction**, not which is correct; upgrading to an accuracy validation needs cell-type-matched brain caQTL effect sizes (controlled-access).
+- Our current result is a **NucEL vs ChromBPNet comparison under matched training data** (classification on the same GM12878 ATAC set, atlas on the same brain DNase-seq peaks); the brain effect atlas (Figure 2b) is a **model-vs-model consistency check**, not an accuracy validation against measured allelic effects.
 - Scaling points 3×/10×/50× are single-seed; 1× is seed-sensitive (0.72–0.86). "0.941 > 0.899" is a strong trend, not a multi-seed-replicated exact margin.
-- The base-resolution mechanism logos (Appendix, `FigureS1`) were computed on **ChromBPNet only** (DeepSHAP), not NucEL, and mechanism hypotheses are **computational, not experimentally validated**.
-- Astrocyte classification is weak (0.771), so its atlas is less reliable.
