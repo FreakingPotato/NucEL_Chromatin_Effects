@@ -1,0 +1,44 @@
+{
+ "note": "Three fine-tuned LM accessibility classifiers. Checkpoints (~1.2GB total) reside on Avocado (the user's local desktop) — too large for artifact transfer over the available channel; documented here with load recipes.",
+ "task": "Binary GM12878 ATAC accessibility classification (peak vs GC-matched background), shared 912-seq held-out test (chr1+chr2).",
+ "checkpoints": {
+  "NucEL": {
+   "path": "~/Claude_Science_Hackathon/glm_bench/ckpt_nucel/best.pt",
+   "size": "369 MB",
+   "backbone": "local ~/NucEL ModernBERT (hidden 512, 22 layers)",
+   "head": "masked mean-pool(last_hidden_state) -> dropout(0.1) -> linear(512,2)",
+   "load": "AutoModel/AutoTokenizer.from_pretrained('FreakingPotato/NucEL', trust_remote_code=True); cfg.reference_compile=False; state_dict from best.pt",
+   "test_auROC": 0.765,
+   "test_auPRC": 0.866,
+   "train_seconds": 162,
+   "mode": "finetune-e2e"
+  },
+  "DNABERT-2": {
+   "path": "~/Claude_Science_Hackathon/glm_bench/ckpt_dnabert2/model.pt (+tokenizer files)",
+   "size": "468 MB",
+   "backbone": "zhihan1996/DNABERT-2-117M",
+   "head": "mean-pool + linear (max_length 320)",
+   "load": "BertConfig.from_pretrained passed as config= to AutoModel (transformers 4.48.3 config_class workaround)",
+   "test_auROC": 0.814,
+   "test_auPRC": 0.893,
+   "train_seconds": 45,
+   "mode": "finetune-endtoend"
+  },
+  "NTv2-100M": {
+   "path": "~/Claude_Science_Hackathon/glm_bench/ckpt_ntv2/ (HF format: model.safetensors + config + tokenizer)",
+   "size": "383 MB",
+   "backbone": "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species",
+   "head": "AutoModelForSequenceClassification num_labels=2 (max_length 200)",
+   "load": "AutoModelForSequenceClassification.from_pretrained(ckpt_ntv2, trust_remote_code=True)",
+   "test_auROC": 0.713,
+   "test_auPRC": 0.808,
+   "train_seconds": 52,
+   "mode": "finetune"
+  }
+ },
+ "cnn_ceiling": {
+  "model": "ChromBPNet GM12878",
+  "test_auROC": 0.899,
+  "test_auPRC": 0.939
+ }
+}

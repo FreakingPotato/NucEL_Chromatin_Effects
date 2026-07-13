@@ -1,0 +1,5 @@
+cell	spearman_signed	spearman_magnitude	sign_concordance	top20_overlap
+brain	0.414	0.458	0.787	5/20
+DLPFC	0.508	0.278	0.85	3/20
+astrocyte	0.493	0.32	0.857	2/20
+glut_neuron	0.574	0.364	0.884	1/20

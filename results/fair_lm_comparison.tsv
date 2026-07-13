@@ -1,0 +1,5 @@
+model	selection	best_lr	test_auROC	test_auPRC
+ChromBPNet (CNN)	pretrained		0.899	0.939
+NucEL (mean-pool)	val-selected LR sweep	0.00015	0.8584	0.9096
+DNABERT-2	val-selected LR sweep	5e-05	0.8262	0.9022
+NTv2-100M	val-selected LR sweep	5e-05	0.8112	0.8874

@@ -1,0 +1,13 @@
+# LM benchmark + brain atlas (PyTorch cu128 / Blackwell)
+torch>=2.4
+transformers>=4.40
+numpy
+pandas
+scipy
+scikit-learn
+pyfaidx
+matplotlib
+logomaker
+
+# ChromBPNet GPU port only needs torch + numpy + the variant-scorer repo
+# (github.com/kundajelab/variant-scorer) for sequence construction

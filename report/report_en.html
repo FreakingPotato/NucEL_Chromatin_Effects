@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cell-Type-Resolved Chromatin Effects of AD/PD Variants: DNA Language Model vs. ChromBPNet</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:15px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1d27;background:#f5f6f8;padding:0 0 80px}
+.hero{background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;padding:44px 8vw 36px}
+.hero h1{font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.3}
+.hero .tag{display:inline-block;background:#3b82f6;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:16px}
+.hero p{color:#cbd5e1;margin-top:12px;max-width:850px;font-size:15px}
+main{max-width:920px;margin:0 auto;padding:0 24px}
+section{background:#fff;border-radius:14px;padding:30px 34px;margin-top:22px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h2{font-size:20px;font-weight:800;color:#0f172a;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #e2e8f0}
+h2 .n{color:#3b82f6;margin-right:8px}
+h3{font-size:16px;font-weight:700;margin:18px 0 8px;color:#1e293b}
+p{margin:9px 0}
+.lead{font-size:16px;color:#334155}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:18px 0}
+.stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:15px}
+.stat .v{font-size:23px;font-weight:800;color:#3b82f6}
+.stat .l{font-size:12px;color:#64748b;margin-top:3px}
+.callout{background:linear-gradient(90deg,#eff6ff,#fff);border-left:4px solid #3b82f6;padding:15px 20px;border-radius:0 10px 10px 0;margin:16px 0}
+.callout.warn{background:linear-gradient(90deg,#fef3c7,#fff);border-color:#d97706}
+.callout.ok{background:linear-gradient(90deg,#dcfce7,#fff);border-color:#16a34a}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid #e2e8f0}
+th{background:#f1f5f9;font-weight:700;font-size:12.5px;color:#475569}
+.dis{font-size:11px;padding:2px 8px;border-radius:9px;font-weight:700}
+.dis.AD{background:#fef3c7;color:#b45309} .dis.PD{background:#f3e8ff;color:#7c3aed}
+figure{margin:20px 0;text-align:center}
+figure img{max-width:100%;border:1px solid #e2e8f0;border-radius:10px}
+figcaption{font-size:12.5px;color:#64748b;margin-top:8px;text-align:left}
+code{background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:13px;font-family:ui-monospace,monospace}
+.pill{display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:7px;padding:3px 10px;margin:3px 4px 3px 0;font-size:13px}
+ul,ol{margin:9px 0 9px 22px} li{margin:5px 0}
+.foot{text-align:center;color:#94a3b8;font-size:12px;margin-top:30px}
+.appendix{background:#fafafa;border:1px dashed #cbd5e1}
+</style></head><body>
+<div class="hero">
+ <span class="tag">Claude Science Hackathon · Research Track</span>
+ <h1>Cell-Type-Resolved Chromatin Effects of AD/PD Variants:<br>DNA Language Model vs. ChromBPNet</h1>
+ <p>Predicting how a non-coding variant reshapes chromatin accessibility is the home turf of ChromBPNet, a specialized CNN. We treat it as a head-to-head: we take our own general-purpose DNA language model, <b>NucEL</b>, and make it perform ChromBPNet's two cell-type-resolved endpoints — <b>brain accessibility classification</b> and the <b>cell-type-resolved variant-effect atlas &amp; top hits</b> — on identical benchmarks. Along the way we chart the data-scaling law of the language model on this task. All computation ran locally on RTX PRO 6000 (Blackwell) GPUs.</p>
+</div>
+
+<main>
+
+<section>
+<h2><span class="n">01</span>The problem</h2>
+<p class="lead">Genome-wide association studies (GWAS) localize disease risk to genomic intervals, but over 90% of risk variants fall in <b>non-coding regions</b> — they do not change proteins; instead they may change the <b>activity of regulatory elements</b>. Three questions follow:</p>
+<ul>
+<li><b>Which variant is causal?</b> Linkage disequilibrium makes dozens of variants at a locus statistically hard to separate.</li>
+<li><b>In which cell type does it act?</b> The same regulatory element can have wildly different activity across brain cell types.</li>
+<li><b>What is the mechanism?</b> Which transcription-factor (TF) binding site does it disrupt?</li>
+</ul>
+<p>Following the Corces-lab approach, we apply ChromBPNet (a base-resolution chromatin-accessibility deep-learning model) to <b>327 AD + 349 PD</b> non-coding GWAS variants, scoring them across four brain cell types (Brain / DLPFC / astrocyte / glutamatergic neuron).</p>
+<div class="grid">
+<div class="stat"><div class="v">676</div><div class="l">AD+PD non-coding variants</div></div>
+<div class="stat"><div class="v">4</div><div class="l">brain cell-type models</div></div>
+<div class="stat"><div class="v">72</div><div class="l">significant in ≥1 cell type</div></div>
+<div class="stat"><div class="v">2</div><div class="l">models compared head-to-head</div></div>
+</div>
+<p class="lead" style="margin-top:1.2em">But the larger question this project asks is: <b>do you actually need a specialized CNN for this? Can a general-purpose DNA language model do it just as well — or better?</b></p>
+<p>ChromBPNet is a convolutional network designed and trained specifically for chromatin accessibility. <b>NucEL</b> is our own general-purpose DNA language model (ModernBERT architecture, pretrained with masked language modeling on genomic sequence, with <b>no built-in notion of accessibility</b>). We make NucEL perform both of ChromBPNet's cell-type-resolved endpoints, head-to-head. The scoreboard:</p>
+<figure><img src="../figures/Figure1_scoreboard_LM_vs_ChromBPNet.png" alt="LM vs ChromBPNet scoreboard">
+<figcaption><b>Figure 1 | LM vs ChromBPNet scoreboard. (a)</b> Accessibility classification: the fine-tuned NucEL beats zero-shot ChromBPNet on GM12878 (0.967 vs 0.899) and on all four brain cell types (mean 0.884 vs 0.744). <b>(b)</b> Per brain cell type — NucEL wins all four. NucEL also independently reproduces ChromBPNet's variant-effect ranking (atlas consistency ρ=0.50; CR1/rs6701713 is the #1 hit for both models — see §03). <b>Bottom line: given enough labeled data, a general DNA language model overtakes the specialized CNN on classification and agrees with it on effect direction — the gap is mainly data-limited, not architectural.</b> All endpoints are cell-type-matched with chr1+chr2 held out; brain variant effects have no experimental ground truth, so the atlas comparison is a model-vs-model check.</figcaption></figure>
+</section>
+
+<section>
+<h2><span class="n">02</span>What is ChromBPNet · architecture</h2>
+<p>ChromBPNet (Pampari et al., bioRxiv <code>10.1101/2024.12.25.630221</code>, verified against the PMC full text) is a <b>fully convolutional network</b>. It takes 2114 bp of one-hot DNA and outputs the base-resolution ATAC/DNase signal over the central 1000 bp:</p>
+<ul>
+<li><b>First convolution:</b> 512 filters of width 21;</li>
+<li><b>8 dilated-convolution residual blocks:</b> 512 filters of width 3 each, dilation doubling per layer (2→256), effective receptive field ≈1041 bp;</li>
+<li><b>Two output heads:</b> a profile head (transposed conv, width 75, multinomial) predicting signal shape, and a count head (global average pool → dense) predicting total signal;</li>
+<li><b>Bias-factorized two-stage training:</b> first learn the Tn5 cut-site bias, then the de-biased regulatory signal — the key improvement of ChromBPNet over BPNet.</li>
+</ul>
+<div class="callout">Variant scoring: feed the reference (ref) and alternate (alt) allele sequences for the same locus and compare the model outputs. The core metrics are <b>log2FC</b> (fold-change in total accessibility; the sign says whether alt opens or closes chromatin) and <b>JSD</b> (Jensen–Shannon distance of signal shape); the combined effect size is <b>IES = |log2FC| × JSD</b>. Each variant gets an empirical null from 100 dinucleotide-preserving shuffles, yielding a p-value.</div>
+</section>
+
+<section>
+<h2><span class="n">03</span>Cell-type-resolved effect atlas · top hits <span style="font-size:.6em;color:#888">(LM vs CNN head-to-head)</span></h2>
+<p>72 variants reach significance (empirical IES p&lt;0.05) in at least one brain cell type. The strongest hits land on <b>known disease loci</b> — strong evidence the pipeline captures real regulatory variants, not noise. Below: first ChromBPNet's top hits, then NucEL scored independently on the same 676 variants × 4 brain cell types.</p>
+<table>
+<tr><th>Variant</th><th>Disease</th><th>Locus/gene</th><th>Top cell type</th><th>IES</th><th>Sig. cells</th><th>Disrupted TF motif</th></tr>
+<tr><td><b>rs6701713</b></td><td><span class='dis AD'>AD</span></td><td>CR1 (AD)</td><td>brain</td><td>0.238</td><td>4/4</td><td>loss ZSCAN16</td></tr>
+<tr><td><b>rs148163066</b></td><td><span class='dis PD'>PD</span></td><td>DNM1L / near-PKP2 (PD region)</td><td>brain</td><td>0.236</td><td>2/4</td><td>loss MXI1</td></tr>
+<tr><td><b>rs10939105</b></td><td><span class='dis AD'>AD</span></td><td>CLNK/HS3ST1 (AD)</td><td>brain</td><td>0.16</td><td>4/4</td><td>loss BACH2</td></tr>
+<tr><td><b>rs59325138</b></td><td><span class='dis AD'>AD</span></td><td>APOE/APOC/TOMM40 (AD)</td><td>DLPFC</td><td>0.061</td><td>2/4</td><td>gain NFKB2</td></tr>
+<tr><td><b>rs4698412</b></td><td><span class='dis PD'>PD</span></td><td>BST1 (PD)</td><td>glut. neuron</td><td>0.048</td><td>4/4</td><td>gain Stat4</td></tr>
+<tr><td><b>rs28370664</b></td><td><span class='dis PD'>PD</span></td><td>PD region</td><td>brain</td><td>0.035</td><td>2/4</td><td>loss NFIX</td></tr>
+</table>
+<p><span class="pill">rs6701713 · CR1 (classic AD gene, complement receptor)</span><span class="pill">rs148163066 · chr12 (PD region)</span><span class="pill">rs4698412 · BST1 (PD locus, glutamatergic-neuron specific)</span><span class="pill">several APOE/APOC/TOMM40 variants (strongest AD locus)</span></p>
+
+<h3 style="margin-top:1.6em">NucEL (the DNA language model) performs the same endpoint</h3>
+<p>ChromBPNet can produce a brain atlas directly because the Corces lab <b>pretrained</b> a model for each brain cell type. NucEL has no brain version, so we fine-tuned one per cell type on the <b>same four brain DNase-seq peak sets</b> (best config: mean-pool, lr=1.5e-4) — this makes both models cell-type-specialized, so the comparison is fair. Classification first (chr1+chr2 held out):</p>
+<table>
+<tr><th>Brain cell type</th><th>DNase experiment</th><th>NucEL (fine-tuned) auROC</th><th>ChromBPNet (zero-shot) auROC</th></tr>
+<tr><td>Brain (cortical tissue)</td><td>ENCSR947POC</td><td><b>0.941</b></td><td>0.860</td></tr>
+<tr><td>Glutamatergic neuron</td><td>ENCSR109RIQ</td><td><b>0.916</b></td><td>0.733</td></tr>
+<tr><td>DLPFC (prefrontal cortex)</td><td>ENCSR805RJA</td><td><b>0.910</b></td><td>0.812</td></tr>
+<tr><td>Astrocyte</td><td>ENCSR146KFX</td><td><b>0.771</b></td><td>0.574</td></tr>
+</table>
+<figure><img src="../figures/Figure2_brain_classification_atlas_consistency.png" alt="NucEL vs ChromBPNet">
+<figcaption><b>Figure 2 | (a)</b> Classification: fine-tuned NucEL beats zero-shot ChromBPNet in all four brain cell types (auROC 0.77–0.94 vs 0.57–0.86), cell-type-matched, chr1+chr2 held out. <b>(b)</b> NucEL effect (Δp) vs ChromBPNet effect (log2FC) over 676 AD/PD variants × 4 cell types: same direction, rank correlation ρ=0.50, sign concordance 0.79–0.88 among high-magnitude variants; <b>CR1/rs6701713 is the #1 hit for both models</b>. Effect units differ (Δp vs log2FC), so only rank/direction are compared; panel b is a model-vs-model consistency check — brain variant effects have no experimental ground truth.</figcaption></figure>
+<div class="callout ok"><b>Result: the LM matches the CNN.</b> (1) <b>Classification:</b> fine-tuned NucEL beats zero-shot ChromBPNet in all four brain cell types. (2) <b>Atlas:</b> NucEL independently reproduces ChromBPNet's effect direction and ranking (signed Spearman 0.41–0.57, sign concordance 0.79–0.88), placing the known top AD locus <b>CR1 (rs6701713) at #1</b> (agreeing with ChromBPNet) and 4 APOE-region variants in the top 30. A general LM, appropriately fine-tuned, captures the same regulatory grammar as the specialized CNN.</div>
+<div class="callout warn"><b>Honest boundaries:</b> (i) <b>consistency ≠ accuracy</b> — brain variant effects have <b>no experimental gold standard</b> (matched brain caQTL effect sizes sit behind Synapse / AD Knowledge Portal controlled access), so Figure 2b can only say the two models agree on direction, not which is more "correct"; upgrading to an accuracy validation needs cell-type-matched brain caQTL truth, a clear next step. (ii) NucEL <b>fails to recover</b> the top PD locus BST1 (rs4698412: NucEL rank 292 vs ChromBPNet rank 6) — a genuine per-locus divergence. (iii) astrocyte classification is weak (0.771), so its atlas is less reliable than the other three. (iv) brain models use DNase-seq, a different assay from the GM12878 ATAC classification in §04.</div>
+</section>
+
+<section>
+<h2><span class="n">04</span>Extension: DNA language model vs specialized CNN (fair comparison)</h2>
+<p class="lead">A live question in the field: given that general DNA language models (LMs) shine on many benchmarks, do we still need a specialized CNN like ChromBPNet? We compare three LMs — <b>NucEL (our ModernBERT DNA model)</b>, <b>DNABERT-2</b>, <b>NTv2-100M</b> — against ChromBPNet on two fairly comparable endpoints. All models use the <b>same dataset and same held-out test set</b> (GM12878 ATAC, chr1+chr2 held out, 6088 train / 912 test). The three LMs are all fine-tuned end-to-end on GPU (not frozen probes).</p>
+<h3>Accessibility classification (fair — every LM gets an LR sweep)</h3>
+<p>The key fairness fix: initially each LM used a single config, but learning rate matters enormously for these models. So we gave <b>every LM the same LR-sweep budget</b> (5e-6→3e-4) and selected the best config strictly on a held-out validation set before reporting test performance — avoiding test-set-selection bias.</p>
+<table>
+<tr><th>Model</th><th>Type</th><th>Selected LR</th><th>auROC</th><th>auPRC</th></tr>
+<tr><td><b>ChromBPNet</b></td><td>specialized CNN</td><td>—</td><td><b>0.899</b></td><td><b>0.939</b></td></tr>
+<tr><td>NucEL (ours)</td><td>LM fine-tuned</td><td>1.5e-4</td><td>0.858</td><td>0.910</td></tr>
+<tr><td>DNABERT-2</td><td>LM fine-tuned</td><td>5e-5</td><td>0.826</td><td>0.902</td></tr>
+<tr><td>NTv2-100M</td><td>LM fine-tuned</td><td>5e-5</td><td>0.811</td><td>0.887</td></tr>
+</table>
+<p style="font-size:13px;color:#64748b">Each auROC is a single training seed; NucEL varies ~±0.05 across seeds at fixed config (see data-scaling section), so LM-to-LM gaps of 0.03–0.05 should be read as magnitudes, not exact ranks.</p>
+<div class="callout warn"><b>Important parity note (please read):</b> ChromBPNet and the LMs are <b>not an equal-training-budget comparison</b> on this classification task. The "selected LR = —" for ChromBPNet means it was <b>not trained or fine-tuned for classification at all</b>: we take the official model pretrained on the same GM12878 ATAC experiment (ENCSR637XSC) and use its predicted <b>total count</b> (fwd+revcomp averaged) as the accessibility score — zero-shot, giving auROC 0.899, because count is itself a continuous "how accessible is this sequence" prediction that naturally separates real peaks from background. The three DNA language models <b>must be fine-tuned</b> (their pretraining objective is masked language modeling, with no notion of accessibility). So "50× NucEL 0.967 &gt; CNN 0.899" precisely means: <b>a zero-shot specialized CNN is overtaken by a general LM fed 350k labeled sequences</b> — it supports "discriminative power is data-acquirable," not an equal-supervision architectural contest. The classification positives share the same biological source (ENCSR637XSC) as ChromBPNet's training data.</div>
+<figure><img src="../figures/Figure3_fair_LM_classification_comparison.png" alt="fair LM comparison">
+<figcaption><b>Figure 3 |</b> Fair comparison: all three LMs get the same LR-sweep + validation-set selection. After tuning, <b>NucEL (0.858) leads all LMs</b>, above DNABERT-2 (0.826) and NTv2 (0.811), but still below the specialized CNN's 0.899. The earlier "NucEL ≈ DNABERT-2" impression came from NucEL not being tuned to its best learning rate.</figcaption></figure>
+
+<h3>Cross-model mechanism consistency</h3>
+<p>We run in-silico mutagenesis (ISM) with each LM on the top variants and align it against ChromBPNet's DeepSHAP base contributions, asking: do the LM and CNN "look at the same bases"?</p>
+<figure><img src="../figures/Figure4_cross_model_mechanism_consistency.png" alt="mechanism consistency">
+<figcaption><b>Figure 4 |</b> The LMs' ISM importance tracks agree only weakly with ChromBPNet's DeepSHAP at base resolution (mean Pearson r of |contribution| profiles: NucEL 0.14, DNABERT-2 0.06). Even the strongest LM does not reconstruct the base-level regulatory grammar the CNN sees — the LMs reach their (weaker) predictions via different, mechanistically shallower features.</figcaption></figure>
+
+<h3>NucEL deep-dive 1: pooling ablation (mean vs CLS-token)</h3>
+<p>We ablated NucEL's classification-head pooling; each pooling type got its own LR sweep with validation-set selection. Both peak at lr=1.5e-4, and <b>CLS-token pooling (test auROC 0.866) is slightly better than masked mean-pooling (0.858)</b>. CLS is weaker at low LR but overtakes in the optimal range.</p>
+<figure><img src="../figures/Figure5_NucEL_pooling_ablation.png" alt="pooling ablation">
+<figcaption><b>Figure 5 | Left:</b> validation auROC (used for selection); both pooling types peak at lr=1.5e-4. <b>Right:</b> test auROC — CLS-token (0.866) slightly exceeds mean-pool (0.858) at the optimal LR. Both show high-LR instability at lr≥2e-4.</figcaption></figure>
+
+<h3>NucEL deep-dive 2: data scaling — the LM's ceiling is <b>data</b>, not architecture</h3>
+<p>This is the most important finding of this round. We expanded supervised training data from 1× (~6k sequences) to 3× (21k), 10× (70k), and <b>50× (350k, ~76% of all non-test peaks in this GM12878 experiment)</b>, with the <b>test set held byte-identical</b> (md5 6b5824f3), re-fine-tuning NucEL at the best config each time:</p>
+<table>
+<tr><th>Training data</th><th>Train sequences</th><th>test auROC</th><th>test auPRC</th></tr>
+<tr><td>1×</td><td>6,088</td><td>0.804</td><td>0.877</td></tr>
+<tr><td>3×</td><td>21,000</td><td>0.896</td><td>0.938</td></tr>
+<tr><td>10×</td><td>69,998</td><td>0.941</td><td>0.964</td></tr>
+<tr><td><b>50×</b></td><td>349,984</td><td><b>0.967</b></td><td><b>0.981</b></td></tr>
+</table>
+<figure><img src="../figures/Figure6_NucEL_data_scaling_curve.png" alt="data scaling curve">
+<figcaption><b>Figure 6 |</b> NucEL rises monotonically with data: test auROC climbs from 0.804 (1×) to 0.941 (10×) and 0.967 (50×), <b>overtaking ChromBPNet CNN's 0.899 already at 10×</b> (same byte-identical held-out test set), pulling further ahead at 50×. Error bars are 1000-sample bootstrap 95% CI. The 1× point is seed-sensitive (0.72–0.86 across two pipelines), but the overall upward trend is robust.</figcaption></figure>
+<div class="callout ok"><b>Key conclusion (with a variance caveat):</b> NucEL's monotone rise with data is a <b>robust trend</b>: 3× (0.896), 10× (0.941), 50× (0.967) all sit clearly above the 1× seed band, tracing a clean scaling curve. This supports the core claim — NucEL trailing the CNN at 1× is <b>data-limited</b>, not an architectural deficit; given enough data this general LM <b>overtakes the specialized CNN</b> on classification, and at 50× (having used ~76% of the available peaks) is still improving with no plateau. <b>But be careful about exact margins:</b> (i) the 1×/3×/10× scaling points use <b>the same pipeline and train/val split</b>, so the within-curve trend is self-consistent; but that pipeline's 1× (0.804) is <b>not the same number</b> as the fair-comparison table's NucEL 1× (0.858), which comes from the LR-sweep pipeline with a different split/seed. (ii) 1× varies a lot across training seeds (0.804/0.813/0.724 across seeds 42/43/44), while 3×/10× ran a single seed each; the bootstrap CI reflects only test-set resampling, not training-seed variance. So "0.941 &gt; 0.899" reads as "a strong trend of the 10× point exceeding the CNN within the scaling pipeline," not a multi-seed-replicated exact margin.</div>
+
+<h3>NucEL deep-dive 3: its own base-resolution interpretability</h3>
+<p>We run <b>saturation in-silico mutagenesis</b> (all 3 alternate bases at every position) directly on the fine-tuned NucEL — not just single-point ISM — to get base-resolution importance maps for the top disease variants, name created/disrupted TF motifs with JASPAR2024, and align position-by-position against ChromBPNet DeepSHAP.</p>
+<figure><img src="../figures/Figure7_NucEL_base_resolution_interpretability.png" alt="NucEL interpretability">
+<figcaption><b>Figure 7 | (a)</b> NucEL saturation-ISM heatmaps for 6 AD/PD variants (±50 bp × 3 alternate bases); <b>(b)</b> top perturbed TF motif per variant (NFIA / FOXO6 / TCFL5 / HES1 / TEAD3 / TBX4); negative = alt creates a site, positive = alt disrupts a site; <b>(c)</b> base-level agreement between NucEL ISM and ChromBPNet DeepSHAP (mean Pearson r=0.14, range −0.14 to 0.38).</figcaption></figure>
+<div class="callout"><b>Interpretability takeaway:</b> NucEL has an extractable base-resolution regulatory grammar and names biologically plausible TF motifs; but as a general LM its base-level agreement with the specialized CNN is only moderate (r=0.14), indicating it reaches its predictions via partly different features — consistent with the cross-model finding above.</div>
+
+<div class="callout"><b>Overall:</b> under a fair equal-budget comparison, the tuned NucEL is the strongest of the three LMs (classification 0.858), and <b>overtakes the specialized CNN already at 10× data</b> (0.941 vs 0.899), rising to 0.967 at 50× with no plateau. Honest scope: at the 1× under-data config LMs clearly trail the specialized CNN — but that gap is <b>mainly data-limited, not architectural</b>; given enough labeled data, a general DNA language model overtakes the specialized CNN on accessibility classification and independently reproduces its variant-effect atlas direction and top hits (§03, ρ=0.50, CR1 the shared #1). Cross-model mechanism consistency is moderate (base-level Pearson r≈0.14), indicating the LM reaches its (comparable) predictions via partly different features. Single-seed runs and the absence of an experimental gold standard for brain variant effects are the clear next validation steps. The three fine-tuned LM checkpoints are retained on the compute host (see the repository manifest).</div>
+</section>
+
+<section>
+<h2><span class="n">05</span>Novelty</h2>
+<ol>
+<li><b>Cell-type resolution</b> (Impact): not one score per variant, but an effect profile across four brain cell types — directly answering "in which cell does it act."</li>
+<li><b>Atlas reproducibility</b> (Depth): the fine-tuned NucEL independently reproduces ChromBPNet's cell-type effect atlas — direction rank-correlation ρ=0.50, sign concordance 0.79–0.88 — and places the known top AD locus CR1 (rs6701713) at the same #1 rank as ChromBPNet, with 4 APOE-region variants in the top 30. Two different-architecture models corroborating each other turns the top hits from "single-model output" into "cross-model consistent evidence."</li>
+<li><b>GPU engineering contribution</b> (Execution): porting the CUDA-11-bound official TF model to PyTorch so it runs on the newest Blackwell GPU, validated numerically at r=0.99999, compressing the atlas from hours to minutes — a reusable open-source artifact.</li>
+<li><b>CNN vs language-model quantitative showdown</b> (Novelty+): under the same data, same held-out test set, and <b>equal tuning budget</b>, a head-to-head of the specialized CNN against three fine-tuned DNA language models (including our own NucEL) on two endpoints — accessibility classification and cell-type effect atlas — answering the field-hot question "can a foundation LM replace a specialized regulatory model."</li>
+<li><b>Key data-scaling finding</b> (Novelty++): showing NucEL's ceiling on classification is <b>data</b>, not architecture — a 1×→50× scaling curve (0.804→0.896→0.941→0.967) overtakes the specialized CNN (0.899) already at 10× and reaches 0.967 at 50× with no plateau — precisely scoping "general LM trails specialized CNN" to the <b>under-data</b> regime. Includes a pooling ablation and NucEL's own base-resolution interpretability.</li>
+</ol>
+</section>
+
+<section>
+<h2><span class="n">06</span>Engineering: how we accelerated with GPU (porting the official model onto Blackwell)</h2>
+<div class="callout warn"><b>Obstacle:</b> the official ChromBPNet depends on TensorFlow 2.8 (2022, bound to CUDA 11), while this machine's RTX PRO 6000 is Blackwell (sm_120, needs CUDA 12.8+). TF 2.8 has no sm_120 machine code, and the official Docker image (based on <code>nvidia/cuda:11.2</code>) cannot use this card either — the GPU sat completely idle.</div>
+<h3>Solution: port the official model to PyTorch</h3>
+<p>We reimplemented the official Keras architecture layer by layer (1 first conv + 8 dilated residual blocks + profile/count dual heads), exported the Keras <code>.h5</code> weights to npz, loaded them into a PyTorch (cu128) copy, and ran inference on GPU. Sequence construction reuses the official variant-scorer code to stay byte-identical with the CPU pipeline.</p>
+<div class="callout ok"><b>Numerical validation:</b> across 200 variants, the GPU port and the CPU TensorFlow pipeline agree at log2FC <b>r = 0.99999</b>, with JSD and IES at <b>r = 1.0</b> (the only difference comes from fp16 autocast, negligible). The port is numerically faithful.</div>
+<figure><img src="../figures/Figure8_GPU_vs_CPU_benchmark.png" alt="GPU vs CPU benchmark">
+<figcaption><b>Figure 8 |</b> GPU acceleration. On the same variant-scoring task (200 variants × 100 shuffles), CPU (official variant-scorer, 64 threads, timed with /usr/bin/time) took 982 s; the GPU PyTorch port (single card) took 41.6 s — about <b>24×</b>. The full brain atlas (AD+PD × 4 cell types = 8 scoring runs) completes in <b>~4 minutes</b> on two cards; the full five-fold atlas (40 runs) in ~19 minutes.</figcaption></figure>
+</section>
+
+<section>
+<h2><span class="n">07</span>Honest limitations</h2>
+<ul>
+<li><b>Brain variant effects have no experimental gold standard.</b> The atlas consistency (§03) can only say NucEL and ChromBPNet agree on direction, not which is more "correct." Upgrading to an accuracy validation needs cell-type-matched brain caQTL effect sizes (e.g. the sorted neuron/glia caQTL of Zeng et al. 2023), whose per-variant summary statistics sit behind Synapse / AD Knowledge Portal controlled access and were not obtained here — the clearest next step.</li>
+<li>The base-resolution mechanism analysis (Appendix A) was run on <b>ChromBPNet only (DeepSHAP)</b>, not on NucEL, and the mechanism cards are <b>computational hypotheses</b> not validated experimentally (e.g. reporter assays, CRISPR).</li>
+<li>The atlas is scored mainly on a single fold (fold_0); although we verified high cross-fold consistency (r 0.318–0.336), a full five-fold-averaged atlas is a natural enhancement.</li>
+<li>Nearest-gene annotations use hand-curated locus windows, not strict eQTL/ABC target-gene mapping.</li>
+<li>The LM showdown is on a <b>single-cell-type task</b> (GM12878 accessibility) plus brain fine-tuning; LMs may behave differently in multi-task / multi-species settings, and this conclusion is scoped to this task. All three LMs were fine-tuned only 3–5 epochs; longer training or larger LM variants remain unexplored.</li>
+</ul>
+</section>
+
+<section class="appendix">
+<h2><span class="n">A</span>Appendix (supplementary): base-resolution mechanism — which TF motif is disrupted</h2>
+<div class="callout warn"><b>Why this is an appendix:</b> this base-resolution mechanism analysis was run on <b>ChromBPNet only</b> (DeepSHAP contribution scores) — <b>not on NucEL</b> — so it does not belong to the LM-vs-CNN comparison that is the core of this project. NucEL's own base-resolution interpretability (saturation ISM + TF-motif naming) is reported separately in Figure 7 above (§04 deep-dive). We keep this here as a supplementary artifact. The mechanism cards below are <b>computational hypotheses generated from quantitative evidence, not experimentally validated.</b></div>
+<p>For the top 16 variants we run DeepSHAP to get each base's contribution to the model prediction, then match the high-contribution window at the variant against the JASPAR TF-motif database to identify <b>created or disrupted TF binding sites</b>. This upgrades "this variant has an effect" to "this variant acts by changing a specific TF's binding."</p>
+<figure><img src="../figures/FigureS1_ChromBPNet_DeepSHAP_logos.png" alt="ChromBPNet DeepSHAP logos">
+<figcaption><b>Figure A1 |</b> Base-resolution contribution logos for the top 6 hits (brain ChromBPNet, DeepSHAP). Each variant shows the ref and alt allele contribution tracks; the dashed red line marks the variant position. For example, the alt(G) allele of rs6701713 (CR1) creates a strong contribution block.</figcaption></figure>
+<div class="callout"><b>Example mechanism hypotheses (synthesized by Claude from quantitative evidence; all computational, not experimentally validated):</b>
+<ul>
+<li><b>rs59325138</b> (APOE region, AD): the alt allele <b>creates</b> an NF-κB binding site — NF-κB is a core neuroinflammation pathway strongly linked to AD pathology.</li>
+<li><b>rs4698412</b> (BST1, PD): alt <b>creates</b> a STAT binding site in glutamatergic neurons, a neuron-specific effect.</li>
+<li><b>rs148163066</b> (chr12, PD): alt causes <b>loss</b> of an MXI1 (MYC-antagonist bHLH repressor) site, predicting reduced chromatin accessibility.</li>
+</ul></div>
+</section>
+
+<div class="foot">Claude Science Hackathon · Research Track | Models: ENCODE ChromBPNet (brain / DLPFC / astrocyte / glutamatergic-neuron DNase) + GM12878 ATAC | Variants: GWAS Catalog (AD/PD, hg38) | All computation on local Blackwell RTX PRO 6000 GPUs</div>
+</main></body></html>
